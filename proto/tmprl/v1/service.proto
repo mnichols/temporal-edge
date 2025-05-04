@@ -1,0 +1,8 @@
+syntax = "proto3";
+import "tmprl/v1/message.proto";
+
+package tmprl.v1;
+
+service TmprlService {
+  rpc LaunchMissile(v1.LaunchMissileRequest) returns (v1.LaunchMissileResponse);
+}
