@@ -1,71 +1,97 @@
 package internal
 
-//
-//import (
-//	"encoding/json"
-//	"strings"
-//	"unsafe"
-//
-//	proxywasm "github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm"
-//)
-//
-//func main() {
-//	proxywasm.SetNewHttpContext(newContext)
-//}
-//
-//func newContext(contextID uint32) proxywasm.HttpContext {
-//	return &httpCtx{}
-//}
-//
-//type httpCtx struct {
-//	proxywasm.DefaultHttpContext
-//}
-//
-//func (ctx *httpCtx) OnHttpRequestBody(bodySize int, endOfStream bool) proxywasm.Action {
-//	if !endOfStream {
-//		return proxywasm.ActionContinue
-//	}
-//
-//	// Get the request body
-//	body, err := proxywasm.GetHttpRequestBody(0, bodySize)
-//	if err != nil {
-//		proxywasm.LogCritical("failed to get request body: " + err.Error())
-//		return proxywasm.ActionContinue
-//	}
-//
-//	// Parse JSON body
-//	var jsonData map[string]interface{}
-//	if err := json.Unmarshal(body, &jsonData); err != nil {
-//		proxywasm.LogCritical("failed to parse JSON: " + err.Error())
-//		return proxywasm.ActionContinue
-//	}
-//
-//	// Encrypt the field (dummy encryption)
-//	if val, ok := jsonData["sensitive_field"].(string); ok {
-//		encrypted := dummyEncrypt(val)
-//		jsonData["sensitive_field"] = encrypted
-//	}
-//
-//	// Marshal back to JSON
-//	newBody, err := json.Marshal(jsonData)
-//	if err != nil {
-//		proxywasm.LogCritical("failed to re-marshal JSON: " + err.Error())
-//		return proxywasm.ActionContinue
-//	}
-//
-//	// Replace request body
-//	if err := proxywasm.SetHttpRequestBody(newBody); err != nil {
-//		proxywasm.LogCritical("failed to set new body: " + err.Error())
-//	}
-//
-//	return proxywasm.ActionContinue
-//}
-//
-//// Dummy encryption: reverses the string
-//func dummyEncrypt(input string) string {
-//	runes := []rune(input)
-//	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-//		runes[i], runes[j] = runes[j], runes[i]
-//	}
-//	return string(runes)
-//}
+import (
+	"encoding/base64"
+	"encoding/json"
+
+	"github.com/proxy-wasm/proxy-wasm-go-sdk/proxywasm"
+	"github.com/proxy-wasm/proxy-wasm-go-sdk/proxywasm/types"
+)
+
+func main() {}
+func init() {
+	proxywasm.SetHttpContext(newContext)
+}
+
+func newContext(contextID uint32) types.HttpContext {
+	return &httpContext{}
+}
+
+type httpContext struct {
+	types.DefaultHttpContext
+}
+
+func (ctx *httpContext) OnHttpRequestBody(bodySize int, endOfStream bool) types.Action {
+	if !endOfStream {
+		return types.ActionContinue
+	}
+
+	body, err := proxywasm.GetHttpRequestBody(0, bodySize)
+	if err != nil {
+		proxywasm.LogCriticalf("failed to read request body: %v", err)
+		return types.ActionContinue
+	}
+
+	var jsonBody map[string]interface{}
+	if err := json.Unmarshal(body, &jsonBody); err != nil {
+		proxywasm.LogCriticalf("failed to parse JSON: %v", err)
+		return types.ActionContinue
+	}
+
+	// Navigate to input.payloads[*].data
+	input, ok := jsonBody["input"].(map[string]interface{})
+	if !ok {
+		proxywasm.LogWarn("missing or malformed 'input' field")
+		return types.ActionContinue
+	}
+
+	payloads, ok := input["payloads"].([]interface{})
+	if !ok {
+		proxywasm.LogWarn("missing or malformed 'payloads' field")
+		return types.ActionContinue
+	}
+
+	for _, item := range payloads {
+		payloadMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		dataField, ok := payloadMap["data"].(string)
+		if !ok {
+			continue
+		}
+
+		decoded, err := base64.StdEncoding.DecodeString(dataField)
+		if err != nil {
+			proxywasm.LogWarnf("invalid base64 in data field: %v", err)
+			continue
+		}
+
+		encrypted := dummyEncrypt(string(decoded))
+		payloadMap["data"] = base64.StdEncoding.EncodeToString([]byte(encrypted))
+	}
+
+	// Marshal and set the new request body
+	newBody, err := json.Marshal(jsonBody)
+	if err != nil {
+		proxywasm.LogCriticalf("failed to re-marshal JSON: %v", err)
+		return types.ActionContinue
+	}
+
+	if err := proxywasm.ReplaceHttpRequestBody(newBody); err != nil {
+		proxywasm.LogCriticalf("failed to set new body: %v", err)
+		return types.ActionContinue
+	}
+
+	return types.ActionContinue
+}
+
+// dummyEncrypt simply reverses the input string — replace with real logic
+func dummyEncrypt(input string) string {
+	runes := []rune(input)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
