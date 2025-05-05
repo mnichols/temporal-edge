@@ -109,6 +109,8 @@ func main() {
 		log.Fatalf("Expected back %d, got %d", len(rawBytes), len(responseProxySendsToWorker.Input.Payloads))
 	}
 
+	// this compares the original bytes sent up from the Worker to the proxy to what
+	// we got back from the service, decrypted, and that the proxy is sending back to the Worker (including the order)
 	for i, payload := range responseProxySendsToWorker.Input.Payloads {
 		if !bytes.Equal(payload.Data, rawBytes[i]) {
 			log.Fatalf("decrypted unencryptedData does not match expected unencryptedData at %d", i)
