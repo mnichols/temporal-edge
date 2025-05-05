@@ -63,6 +63,12 @@ func main() {
 	sentToTemporalService := &tmprlv1.Payloads{
 		Payloads: make([]*tmprlv1.Payload, 1),
 	}
+
+	// this is the essential bit.
+	// Basically, we zip up the entire original Payloads into this singular payload we will
+	// annotate as "envoy", encrypt the entire thing, and send it along.
+	// When we get it back, we will decrypt it if it is "envoy", and then swap out the Payloads with the
+	// unpacked bits before sending it along its way.
 	sentToTemporalService.Payloads[0] = &tmprlv1.Payload{
 		Metadata: map[string][]byte{"encoding": []byte("envoy")},
 		Data:     allPayloadsEncrypted,
