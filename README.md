@@ -11,9 +11,16 @@ https://buf.build/docs/reference/cli/buf/generate/
 buf generate
 
 # now generate the descriptor to be used by envoy
+# here it is in JSON
 buf build --as-file-descriptor-set \
   --config buf.yaml \
   --output tmprl/generated/tmprl/set.json
+  
+# and here it is in yaml
+buf build --as-file-descriptor-set \
+  --config buf.yaml \
+  --output tmprl/generated/tmprl/set.yaml
+
 ```
 
 ### Verify 1
