@@ -4,13 +4,13 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/mnichols/temporal-edge
+      value: github.com/mnichols/temporal-edge/tmprl/generated
 plugins:
   - remote: buf.build/protocolbuffers/go
-    out: generated
+    out: tmprl/generated
     opt: paths=source_relative
   - remote: buf.build/connectrpc/go
-    out: generated
+    out: tmprl/generated
     opt: paths=source_relative
 inputs:
   - directory: proto

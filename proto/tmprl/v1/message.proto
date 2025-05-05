@@ -15,11 +15,17 @@ message Payload {
   bytes data = 2;
 }
 
-message LaunchMissileRequest {
-  string id = 1;
-  string value = 2;
-  Payloads payloads = 3;
+message StartWorkflowExecutionRequest {
+  string workflow_id = 1;
+  string identity = 2;
+  Payloads input = 3;
 }
-message LaunchMissileResponse {
-  string id = 1;
+message StartWorkflowExecutionResponse {
+  string workflow_id = 1;
+  string identity = 2;
+  Payloads input = 3;
 }
+message MyWorkflowData {
+  string value = 1;
+}
+
